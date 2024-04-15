@@ -7,13 +7,17 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import tensorflow as tf
 
+from scipy.linalg import circulant
+
 
 @tf.function
 def ode_fn(t, y, params):
-  a,b = tf.split(y,2)
+# params = \eps, a, J (coupling strength), L (coupling matrix), I (external drivers)
+  u,v = tf.split(y,2)
+  eps, a, J, L, I = params
   #tf.print("result of f",tf.reshape(tf.stack([(a - tf.pow(a,3)/3 - b + 0.1)/0.1,a + 0.1],axis=0),[-1]))
-  return tf.reshape(tf.stack([(a - tf.pow(a,3)/3 - b + params[2])/params[0],a + params[1]],axis=0),[-1])
-  #tf.stack([(y[0] - tf.pow(y[0],3)/3 - y[1] + 0.1)/0.1,y[0] + 0.1])
+  return tf.reshape(tf.stack([(u - tf.pow(u,3)/3 - v - J*tf.linalg.matvec(L,u,a_is_sparse = True) +I)/eps,
+                               u + a],axis=0),[-1])
   #return tf.linalg.matvec(A, y)
 
 
@@ -109,23 +113,34 @@ def adaptive_runge_kutta_dormand_prince(f, t0, y0, t_end, h, A, atol, rtol):
 def solver(fn, t_init, y_init, t_max, step, A, atol=None, rtol=None):
   # return tfp.math.ode.DormandPrince().solve(fn, t_init, y_init, solution_times=np.linspace(1,1000,10))
   if atol == rtol == None:
+    print("Fixed step")
     return runge_kutta_dormand_prince(fn, t_init, y_init, t_max, step, A)
   else:
+    print("Adaptive step")
     return adaptive_runge_kutta_dormand_prince(fn, t_init, y_init, t_max, step, A, atol,rtol)
 
   
-
+N = 500
 t_init = tf.constant(0., dtype=tf.float64)
-t_max = tf.constant(10., dtype=tf.float64)
-step = tf.constant(0.0001, dtype=tf.float64)
+t_max = tf.constant(100., dtype=tf.float64)
+step = tf.constant(0.001, dtype=tf.float64)
+expected_steps = 1 + int(t_max/step)
 # y_init = tf.constant([1.,1.,1.,1.,1.,1.,1.,0.,0.,0.,0.,0.], dtype=tf.float64)
-y_init = tf.random.normal([1000], dtype = tf.float64)
+a = 1.3
+fp = (-a, a**3/3 - a)
+y_init = tf.constant([fp[0] + 2] + [fp[0]]*(N-1) + [fp[1]] * N, dtype = tf.float64)
 atol = tf.constant(1e-4,dtype=tf.float64)
 rtol = tf.constant(1e-4,dtype=tf.float64)
 tf.print("Initial state ",y_init)
 # A = tf.constant([[0., -1., 0, 0], [1., 0., 0, 0],[0., -0.5, 0.5, 0], [0.5, 0.,0., -0.5]], dtype=tf.float64)
-params = tf.Variable([0.01, 1.3,0.1], dtype=tf.float64) # Params: eta, a, driver
+A = tf.convert_to_tensor(circulant([0 for i in range(N - 1)] + [1]).T, dtype = tf.float64)
+L = tf.eye(N, dtype = tf.float64) - A
 
+I = tf.constant(0., dtype = tf.float64)
+
+#params = tf.Variable([0.01, 1.3,0.5, L, I], dtype=tf.float64) 
+params = tf.tuple([0.01, a, 0.5, L, I]) 
+# params = \eps, a, J (coupling strength), L (coupling matrix), I (external drivers)
 
 
 print("Starting integration")
@@ -155,5 +170,9 @@ for res in range(int(n_plots*0.01)):  #Plotto solo l'1% delle coppie X,Y
     # plt.show()
     plt.savefig("plots/XYevo_" + str(res) + ".png")
   
+plt.figure()
+
+plt.plot([i for i in range(N)], results[0][expected_steps//2][:N])
+plt.show()
 # plt.plot(results[0][:,0],results[0][:,3])
 # plt.show()
