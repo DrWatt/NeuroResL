@@ -165,24 +165,26 @@ print("Integrated ", len(results[1]), " steps in ", time.time() - start_time, " 
 
 tf.print("Results", results)
 n_plots = len(results[0][0])
-for res in range(int(n_plots*0.01)):  #Plotto solo l'1% delle coppie X,Y
+if not os.path.exists("plots"):
+    os.makedirs("plots")
+for res in range(int((n_plots*0.01)/2)):  #Plotto solo l'1% delle coppie X,Y
   fig, ax = plt.subplots()
-  ax.plot(results[1],results[0][:,res])
-  if res < n_plots/2:
-    ax.set_xlabel("X(" + str(res) +")")
-    # plt.show()
-    plt.savefig("plots/evo_" + str(res) + "_X.png")
-    plt.clf()
-  else:
-    ax.set_xlabel("Y(" + str(int(res-n_plots/2)) +")")
-    # plt.show()
-    plt.savefig("plots/evo_" + str(int(res-n_plots/2)) + "_Y.png")
-    plt.clf()
-  if res < n_plots/2:
-    print(res, int(res+n_plots/2))
-    plt.plot(results[0][:,res],results[0][:,int(res+n_plots/2)])
-    # plt.show()
-    plt.savefig("plots/XYevo_" + str(res) + ".png")
+  ax.plot(results[1],results[0][:,res],label="x")
+  ax.plot(results[1],results[0][:,int(res+n_plots/2)],label="y")
+  ax.set_xlabel("t")
+
+  ax.legend(loc="upper right")
+  fig.savefig("plots/evoVSt_" + str(res) + ".png")
+  
+  fig, ax = plt.subplots()
+  print(res, int(res+n_plots/2))
+  ax.scatter(results[0][:,res],results[0][:,int(res+n_plots/2)],c=tf.linalg.normalize(results[1])[0].numpy())
+  ax.set_xlabel("x")
+  ax.set_ylabel("y")
+
+  fig.savefig("plots/XYevo_" + str(res) + ".png")
+  plt.clf()
+
   
 plt.figure()
 
