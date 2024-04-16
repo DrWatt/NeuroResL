@@ -20,7 +20,21 @@ def ode_fn(t, y, params):
                                u + a],axis=0),[-1])
   #return tf.linalg.matvec(A, y)
 
+def ER_adjacency_tensor(N, p, directed = True):
+    rand = tf.random.uniform(shape = (N, N))
+    adj  = tf.cast(tf.math.less(rand, p), tf.float64)
+    if not directed:
+        adj_ut = tf.linalg.band_part(adj, 0, -1)
+        return adj_ut + tf.transpose(adj_ut)
+    return adj
 
+def physical_laplacian(A, normalised = True):
+    degree_sequence = tf.reduce_sum(A, axis = 1)
+    D = tf.linalg.diag(degree_sequence)
+    L = D - A
+    if normalised:
+        L = tf.matmul(tf.linalg.inv(D), L)
+    return L
 
 @tf.function
 def runge_kutta_dormand_prince(f, t0, y0, t_end, h, params):
@@ -128,13 +142,13 @@ expected_steps = 1 + int(t_max/step)
 # y_init = tf.constant([1.,1.,1.,1.,1.,1.,1.,0.,0.,0.,0.,0.], dtype=tf.float64)
 a = 1.3
 fp = (-a, a**3/3 - a)
-y_init = tf.constant([fp[0] + 2] + [fp[0]]*(N-1) + [fp[1]] * N, dtype = tf.float64)
+y_init = tf.constant([fp[0] + 9] + [fp[0]]*(N-1) + [fp[1]] * N, dtype = tf.float64)
 atol = tf.constant(1e-4,dtype=tf.float64)
 rtol = tf.constant(1e-4,dtype=tf.float64)
 tf.print("Initial state ",y_init)
 # A = tf.constant([[0., -1., 0, 0], [1., 0., 0, 0],[0., -0.5, 0.5, 0], [0.5, 0.,0., -0.5]], dtype=tf.float64)
-A = tf.convert_to_tensor(circulant([0 for i in range(N - 1)] + [1]).T, dtype = tf.float64)
-L = tf.eye(N, dtype = tf.float64) - A
+A = ER_adjacency_tensor(N, 0.05)#tf.convert_to_tensor(circulant([0 for i in range(N - 1)] + [1]).T, dtype = tf.float64)
+L = physical_laplacian(A) 
 
 I = tf.constant(0., dtype = tf.float64)
 
