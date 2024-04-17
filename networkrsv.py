@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import time
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
+
+
 import tensorflow as tf
 
 from scipy.linalg import circulant
@@ -67,12 +67,12 @@ class NetworkRsv:
     def body(t,y,idx):
       y_temp = y.read(idx)
       t_temp = t.read(idx)
-      if idx == 800:
-        y_temp = y_temp + pulse
-      if idx == 1600:
-        y_temp = y_temp + pulse
-      if idx == 3200:
-        y_temp = y_temp + pulse
+      #if idx == 800:
+      #  y_temp = y_temp + pulse
+      #if idx == 1600:
+      #  y_temp = y_temp + pulse
+      #if idx == 3200:
+      #  y_temp = y_temp + pulse
       k1 = h * f(t_temp, y_temp)
       k2 = h * f(t_temp + h / 5, y_temp + k1 / 5)
       k3 = h * f(t_temp + 3 * h / 10, y_temp + 3 * k1 / 40 + 9 * k2 / 40)

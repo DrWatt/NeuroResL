@@ -2,17 +2,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import time
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+# os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+# os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import tensorflow as tf
 
 from scipy.linalg import circulant
 
 
 from networkrsv import NetworkRsv
-
-
+try:
+  os.environ['CUDA_VISIBLE_DEVICES'] == ''
+  print("RUNNING ON CPU")
+except:
+    print("RUNNING ON GPU WITH CUDA")
+try:
+  print("DYNAMIC MEMORY ALLOCATION: ",os.environ['TF_FORCE_GPU_ALLOW_GROWTH'])
+except:
+  print("DYNAMIC MEMORY ALLOCATION: false")
 def ER_adjacency_tensor(N, p, directed = True):
   rand = tf.random.uniform(shape = (N, N))
   adj  = tf.cast(tf.math.less(rand, p), tf.float64)
@@ -48,8 +55,8 @@ expected_steps = 1 + int(t_max/step)
 # y_init = tf.constant([1.,1.,1.,1.,1.,1.,1.,0.,0.,0.,0.,0.], dtype=tf.float64)
 a = 1.3
 fp = (-a, a**3/3 - a)
-# y_init = y_init = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype = tf.float64)
-y_init = tf.random.uniform([1000], dtype = tf.float64)
+y_init = y_init = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype = tf.float64)
+# y_init = tf.random.uniform([1000], dtype = tf.float64)
 atol = tf.constant(1e-4,dtype=tf.float64)
 rtol = tf.constant(1e-4,dtype=tf.float64)
 tf.print("Initial state ",y_init)
@@ -70,6 +77,7 @@ start_time= time.time()
 results = solver.run()
 
 print("Integrated ", len(results[1]), " steps in ", time.time() - start_time, " s")
+
 
 tf.print("Results", results)
 n_plots = len(results[0][0])
