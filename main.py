@@ -31,6 +31,7 @@ def ER_adjacency_tensor(N, p, directed = True):
 def physical_laplacian(A, normalised = True):
   degree_sequence = tf.reduce_sum(A, axis = 1)
   Dinv = tf.linalg.diag([1./d if d > 0. else 0. for d in degree_sequence])
+  Dinv =tf.cast(Dinv,dtype=tf.float64)
   D = tf.linalg.diag(degree_sequence)
   L = D - A
   if normalised:
@@ -43,26 +44,43 @@ def ode_fn(t, y, x, params):
   u,v = tf.split(y,2)
   ux,vx = tf.split(x,2)
   eps, a, J, L, I = params
-
+  #tf.print(ux)
   
   return tf.reshape(tf.stack([(u - tf.pow(u,3)/3 - v - J*tf.linalg.matvec(L,u,a_is_sparse = True) +I*ux)/eps,
                                u + a],axis=0),[-1])
 
-solver = NetworkRsv("AdaptDormPrince")
-N=100
+solver = NetworkRsv("DormPrince")
+N=1000
 t_init = tf.constant(0., dtype=tf.float64)
-t_max = tf.constant(1., dtype=tf.float64)
+t_max = tf.constant(10., dtype=tf.float64)
 step = tf.constant(0.001, dtype=tf.float64)
 expected_steps = 1 + int(t_max/step)
 
 a = 1.3
 fp = (-a, a**3/3 - a)
-y_init = y_init = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype = tf.float64)
+# y_init = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype = tf.float64)
 # y_init = tf.random.uniform([1000], dtype = tf.float64)
-
+y_init = tf.random.uniform([2*N], dtype = tf.float64)
 #    x.write(i,tf.zeros([2*N],dtype=tf.float64))
-x = tf.zeros([int(t_max/step)+1,2*N], dtype = tf.float64)
-
+x = []
+for i in range(int(t_max/step)+1):
+  x.append(tf.zeros([2*N],dtype=tf.float64))
+  if i % 100 == 0:
+    x[i] = tf.random.normal([N*2], dtype=tf.float64)
+  # x.append(tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64))
+  
+# pulse_step = tf.random.uniform([],maxval=int(t_max/step)+1,dtype=tf.int32)
+# x[pulse_step] = tf.constant([fp[0] + 5 for i in range(N)] + [fp[1]] * N, dtype=tf.float64)
+# x[pulse_step+ 1] = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64)
+# x[pulse_step+ 2] = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64)
+# x[pulse_step+ 3] = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64)
+# x[pulse_step+ 4] = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64)
+# x[pulse_step] = tf.random.normal([N*2], dtype=tf.float64)
+# print(x[pulse_step])
+# print(pulse_step)
+x = tf.convert_to_tensor(x, dtype=tf.float64)
+#x = tf.zeros([int(t_max/step)+1,2*N], dtype = tf.float64)
+tf.print(x.shape)
 atol = tf.constant(1e-3,dtype=tf.float64)
 rtol = tf.constant(1e-3,dtype=tf.float64)
 tf.print("Initial state ",y_init)
@@ -70,7 +88,7 @@ tf.print("Initial state ",y_init)
 A = ER_adjacency_tensor(N, 0.01, True)#tf.convert_to_tensor(circulant([0 for i in range(N - 1)] + [1]).T, dtype = tf.float64)
 L = physical_laplacian(A) 
 
-I = tf.constant(0., dtype = tf.float64)
+I = tf.constant(10., dtype = tf.float64)
 
 
 params = tf.tuple([0.01, a, 0.5, L, I]) 
@@ -80,7 +98,7 @@ solver.fit(ode_fn,y_init,t_init,t_max,x, step, params)
 
 print("Starting integration")
 start_time= time.time()
-results = solver.run(atol=atol,rtol=rtol)
+results = solver.run()
 
 print("Integrated ", len(results[1]), " steps in ", time.time() - start_time, " s")
 
