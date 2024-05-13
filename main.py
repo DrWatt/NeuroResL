@@ -4,18 +4,18 @@ import os
 import time
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+#os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import tensorflow as tf
 
 from scipy.linalg import circulant
 
 
 from networkrsv import NetworkRsv
-try:
-  os.environ['CUDA_VISIBLE_DEVICES'] == ''
-  print("RUNNING ON CPU")
-except:
-    print("RUNNING ON GPU WITH CUDA")
+#try:
+#  os.environ['CUDA_VISIBLE_DEVICES'] == ''
+#  print("RUNNING ON CPU")
+#except:
+#    print("RUNNING ON GPU WITH CUDA")
 try:
   print("DYNAMIC MEMORY ALLOCATION: ",os.environ['TF_FORCE_GPU_ALLOW_GROWTH'])
 except:
@@ -49,10 +49,10 @@ def ode_fn(t, y, x, params):
   return tf.reshape(tf.stack([(u - tf.pow(u,3)/3 - v - J*tf.linalg.matvec(L,u,a_is_sparse = True) +I*ux)/eps,
                                u + a],axis=0),[-1])
 
-solver = NetworkRsv("DormPrince")
+solver = NetworkRsv("RK4")
 N=1000
 t_init = tf.constant(0., dtype=tf.float64)
-t_max = tf.constant(10., dtype=tf.float64)
+t_max = tf.constant(40., dtype=tf.float64)
 step = tf.constant(0.001, dtype=tf.float64)
 expected_steps = 1 + int(t_max/step)
 
@@ -88,10 +88,12 @@ tf.print("Initial state ",y_init)
 A = ER_adjacency_tensor(N, 0.01, True)#tf.convert_to_tensor(circulant([0 for i in range(N - 1)] + [1]).T, dtype = tf.float64)
 L = physical_laplacian(A) 
 
+
+
 I = tf.constant(10., dtype = tf.float64)
 
 
-params = tf.tuple([0.01, a, 0.5, L, I]) 
+params = tf.tuple([0.01, a, 0., L, I]) 
 
 
 solver.fit(ode_fn,y_init,t_init,t_max,x, step, params)

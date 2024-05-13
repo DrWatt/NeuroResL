@@ -20,7 +20,9 @@ class DynamicsFN:
 
 class NetworkRsv:
   def __init__(self, integrator=None):
-    supported_integrators =   {"DormPrince" : self.runge_kutta_dormand_prince,"AdaptDormPrince" : self.adaptive_runge_kutta_dormand_prince  }
+    supported_integrators =   {"DormPrince"      : self.runge_kutta_dormand_prince,
+                               "AdaptDormPrince" : self.adaptive_runge_kutta_dormand_prince,
+                               "RK4"             : self.runge_kutta4}
     self.fn = None
     try:
       self.integrator = supported_integrators[integrator]
@@ -81,7 +83,37 @@ class NetworkRsv:
 
     t, y, x, idx = tf.while_loop(condition, body, [t, y, x, idx],parallel_iterations=100)
     return y.stack(),t.stack()
+  @tf.function
+  def runge_kutta4(self, f, t0, y0, t_end, h, x):
+    y = tf.TensorArray(dtype=tf.float64, size = 0, dynamic_size=True, clear_after_read=False)
+    t = tf.TensorArray(dtype=tf.float64, size = 0, dynamic_size=True, clear_after_read=False)
+    t = t.write(0,t0)
+    y = y.write(0,y0)
+    idx = tf.constant(0, dtype=tf.int32)
 
+    def condition(t,y,x, idx):
+      return tf.less(t.read(idx), t_end)
+    def body(t,y,x, idx):
+      y_temp = y.read(idx)
+      t_temp = t.read(idx)
+      x_temp = x[idx]
+
+      k1 = f(t_temp, y_temp, x_temp)
+      k2 = f(t_temp + h/2., y_temp + h * k1 / 2., x_temp)
+      k3 = f(t_temp + h/2., y_temp + h * k2 / 2., x_temp)
+      k4 = f(t_temp + h   , y_temp + h * k3     , x_temp)
+
+      y_temp = y_temp + h * (k1 + 2. * k2 + 2 * k3 + k4) / 6.
+      idx += 1
+      y = y.write(idx, y_temp)
+
+      t = t.write(idx, t_temp + h)
+      tf.print("Time step", tf.cast(t_temp, tf.int32), " out of ", t_end, end='\r')
+      return t, y, x, idx
+    
+
+    t, y, x, idx = tf.while_loop(condition, body, [t, y, x, idx],parallel_iterations=100)
+    return y.stack(),t.stack()
   @tf.function
   def adaptive_runge_kutta_dormand_prince(self, f, t0, y0, t_end, h, x, atol, rtol):
     y = tf.TensorArray(dtype=tf.float64, size = 0, dynamic_size=True, clear_after_read=False)
