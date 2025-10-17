@@ -74,25 +74,25 @@ for i in tqdm.tqdm(range(num_events)):
 
 
 np.save("polygon_distances_"+ str(sides)+ "_sides",np.array(dists))
-# Plot the random walk in the triangle
-# plt.figure(figsize=(18, 6))
-# plt.subplot(1,3,1)
-# plt.plot(x_positions, y_positions, '-')
-# plt.plot(x_positions[0], y_positions[0], 'go')  # Starting point
-# plt.plot(x_positions[-1], y_positions[-1], 'ro')  # Ending point
-# plt.title("Random Walk in a Polygon")
-# plt.xlabel("X Position")
-# plt.ylabel("Y Position")
-# plt.grid(True)
-# 
-# plt.subplot(1,3,2)
-# plt.plot(distances_x_max)
-# plt.plot(distances_x_min)
-# plt.plot(distances_x_median)
-# 
-# plt.subplot(1,3,3)
-# plt.plot(distances_y_max)
-# plt.plot(distances_y_min)
-# plt.plot(distances_y_median)
-# 
-# plt.show()
+#Plot the random walk in the triangle
+plt.figure(figsize=(18, 6))
+plt.subplot(1,3,1)
+plt.plot(x_positions, y_positions, '-')
+plt.plot(x_positions[0], y_positions[0], 'go')  # Starting point
+plt.plot(x_positions[-1], y_positions[-1], 'ro')  # Ending point
+plt.title("Random Walk in a Polygon")
+plt.xlabel("X Position")
+plt.ylabel("Y Position")
+plt.grid(True)
+
+plt.subplot(1,3,2)
+plt.plot(distances_x_max)
+plt.plot(distances_x_min)
+plt.plot(distances_x_median)
+
+plt.subplot(1,3,3)
+plt.plot(distances_y_max)
+plt.plot(distances_y_min)
+plt.plot(distances_y_median)
+
+plt.show()

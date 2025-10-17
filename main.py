@@ -36,7 +36,7 @@ def physical_laplacian(A, normalised = True):
   L = D - A
   if normalised:
       L = tf.matmul(Dinv, L)
-  return L
+  return tf.sparse.from_dense(L)
 
 @tf.function
 def ode_fn(t, y, x, params):
@@ -45,18 +45,21 @@ def ode_fn(t, y, x, params):
   ux,vx = tf.split(x,2)
   eps, a, J, L, I = params
   #tf.print(ux)
-  
-  return tf.reshape(tf.stack([(u - tf.pow(u,3)/3 - v - J*tf.linalg.matvec(L,u,a_is_sparse = True) +I*ux)/eps,
-                               u + a],axis=0),[-1])
+  du = (u - tf.pow(u,3)/3 - v)/eps
+  dv = u + a
+  u_ = tf.expand_dims(u,1)
+  mtml = tf.sparse.sparse_dense_matmul(L,u_)
+  inp= -(J*tf.squeeze(mtml) +I*ux)/eps
+  return tf.reshape(tf.stack([du + inp, dv],axis=0),[-1])
 
 solver = NetworkRsv("RK4")
-N=1000
+N=1500
 t_init = tf.constant(0., dtype=tf.float64)
-t_max = tf.constant(40., dtype=tf.float64)
+t_max = tf.constant(10., dtype=tf.float64)
 step = tf.constant(0.001, dtype=tf.float64)
 expected_steps = 1 + int(t_max/step)
 
-a = 1.3
+a  = 1.3
 fp = (-a, a**3/3 - a)
 # y_init = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype = tf.float64)
 # y_init = tf.random.uniform([1000], dtype = tf.float64)
@@ -102,10 +105,13 @@ print("Starting integration")
 start_time= time.time()
 results = solver.run()
 
+results[1] = results[1].close().stack().numpy()
+results[0] = results[0].close().stack().numpy()
+
 print("Integrated ", len(results[1]), " steps in ", time.time() - start_time, " s")
 
 
-tf.print("Results", results)
+#tf.print("Results", results)
 n_plots = len(results[0][0])
 if not os.path.exists("plots"):
     os.makedirs("plots")
@@ -119,7 +125,7 @@ for res in range(int((n_plots*0.01)/2)):  #Plotto solo l'1% delle coppie X,Y
   fig.savefig("plots/evoVSt_" + str(res) + ".png")
   
   fig, ax = plt.subplots()
-  print(res, int(res+n_plots/2))
+#  print(res, int(res+n_plots/2))
   ax.scatter(results[0][:,res],results[0][:,int(res+n_plots/2)],c=tf.linalg.normalize(results[1])[0].numpy())
   ax.set_xlabel("x")
   ax.set_ylabel("y")
