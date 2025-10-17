@@ -1,0 +1,2 @@
+python==3.10
+tensorflow==2.17.0==cuda124py310ha1f05a4_200
