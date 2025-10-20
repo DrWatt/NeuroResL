@@ -85,8 +85,8 @@ class NetworkRsv:
     return y.stack(),t.stack()
   @tf.function
   def runge_kutta4(self, f, t0, y0, t_end, h, x):
-    ndims  = tf.cast(tf.shape(y0)  , tf.int32)
-    nsteps = tf.cast((t_end - t0)/h, tf.int32)
+    #ndims  = tf.cast(tf.shape(y0)  , tf.int32)
+    #nsteps = tf.cast((t_end - t0)/h, tf.int32)
 
     y = tf.TensorArray(dtype=tf.float64, size = 0, 
                        dynamic_size=True, clear_after_read=False)
@@ -115,12 +115,11 @@ class NetworkRsv:
 
       t = t.write(idx, t_temp + h)
       tf.print("Time step", tf.cast(t_temp, tf.int32), " out of ", t_end, end='\r')
-      tf.print("t=", t_temp,  end='\r')
       return t, y, x, idx
     
 
-    t, y, x, idx = tf.while_loop(condition, body, [t, y, x, idx],parallel_iterations=1)
-    return y,t
+    t, y, x, idx = tf.while_loop(condition, body, [t, y, x, idx],parallel_iterations=100)
+    return y.stack(),t.stack()
   @tf.function
   def adaptive_runge_kutta_dormand_prince(self, f, t0, y0, t_end, h, x, atol, rtol):
     y = tf.TensorArray(dtype=tf.float64, size = 0, dynamic_size=True, clear_after_read=False)
