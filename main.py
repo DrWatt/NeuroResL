@@ -163,7 +163,7 @@ tf.print("Results", results)
 n_plots = len(results[0][0])
 if not os.path.exists("plots"):
     os.makedirs("plots")
-for res in range(int((n_plots*0.01)/2)):  #Plotto solo l'1% delle coppie X,Y
+for res in range(min(int((n_plots*0.01)/2),20)):   #Plotto solo l'1% delle coppie X,Y ma mai più di 20
   fig, ax = plt.subplots()
   ax.plot(results[1],results[0][:,res],label="x")
   ax.plot(results[1],results[0][:,int(res+n_plots/2)],label="y")
