@@ -112,9 +112,9 @@ y_init = tf.random.uniform([2*N], dtype = tf.float64)
 x = []
 for i in range(int(t_max/step)+1):
   x.append(tf.zeros([2*N],dtype=tf.float64))
-  if i % 100 == 0:
+  if i % 1000 == 0:
     x[i] = tf.random.normal([N*2], dtype=tf.float64)
-  # x.append(tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64))
+  #x.append(tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64))
   
 # pulse_step = tf.random.uniform([],maxval=int(t_max/step)+1,dtype=tf.int32)
 # x[pulse_step] = tf.constant([fp[0] + 5 for i in range(N)] + [fp[1]] * N, dtype=tf.float64)
@@ -141,7 +141,7 @@ L = physical_laplacian_sparse(A)
 I = tf.constant(10., dtype = tf.float64)
 
 
-params = tf.tuple([0.01, a, 0., L, I]) 
+params = tf.tuple([0.01, a, 0.1, L, I]) 
 
 
 solver.fit(sparse_ode_fn,y_init,t_init,t_max,x, step, params)
