@@ -174,10 +174,10 @@ for res in range(min(int((n_plots*0.01)/2),20)):   #Plotto solo l'1% delle coppi
   
   fig, ax = plt.subplots()
   print(res, int(res+n_plots/2))
-  ax.scatter(results[0][:,res],results[0][:,int(res+n_plots/2)],c=tf.linalg.normalize(results[1])[0].numpy())
+  sc = ax.scatter(results[0][:,res],results[0][:,int(res+n_plots/2)],c=results[1])
   ax.set_xlabel("x")
   ax.set_ylabel("y")
-
+  fig.colorbar(sc, label= "t")
   fig.savefig("plots/XYevo_" + str(res) + ".png")
   plt.clf()
 
