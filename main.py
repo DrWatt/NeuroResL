@@ -9,6 +9,12 @@ import tensorflow as tf
 
 from scipy.linalg import circulant
 
+if os.environ.get("DISPLAY", "") == "" or "localhost" in os.environ.get("DISPLAY", ""):
+    import matplotlib
+    print("No display found. Using non-GUI Agg backend.")
+    matplotlib.use("Agg")
+
+
 
 from networkrsv import NetworkRsv
 #try:
