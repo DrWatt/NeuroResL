@@ -4,7 +4,7 @@ import os
 import time
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-#os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import tensorflow as tf
 
 from scipy.linalg import circulant
@@ -103,7 +103,7 @@ def sparse_ode_fn(t, y, x, params):
     return tf.reshape(tf.stack([du, dv], axis = 0),[-1])
 
 solver = NetworkRsv("stochRK4")
-N=200
+N=2000
 t_init = tf.constant(0., dtype=tf.float64)
 t_max = tf.constant(100., dtype=tf.float64)
 step = tf.constant(0.001, dtype=tf.float64)

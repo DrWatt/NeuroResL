@@ -46,15 +46,16 @@ def line_intersection_point(p1, p2, q1, q2, tol = 1e-9):
     px = x1 + t * (x2 - x1)
     py = y1 + t * (y2 - y1)
     points = np.stack((px, py), axis=1)
-    
-    return mask, points
+    print(np.where(mask)[0], points[mask])
+ 
+    return np.where(mask)[0], points[mask]
 
 def polygon_vertex_creator(n,r=1):
     vertices = []
     for i in range(n):
         vertices.append([r * math.cos(2 * math.pi * i / n +0.2), r * math.sin(2 * math.pi * i / n +0.2)])
 
-    return vertices
+    return np.array(vertices)
 
 
 
@@ -86,51 +87,62 @@ def random_walk_triangle(num_steps,sides):
     distances_y_min = []
     distances_y_median = []
     vertices_prev = np.roll(vertices, 1, axis=0)
-    rand_steps = np.random.normal(0, 1, size=(num_steps, 2))
+    rand_steps = np.random.normal(0, .10, size=(num_steps, 2))
 
-
-
-
+    #print(vertices.shape, vertices_prev.shape)
+    #print(vertices, vertices_prev)
 
     # Perform random walk
     for s in range(num_steps):
 
         new_position = position + rand_steps[s] #(position + target_vertex) / 2
         
+        side, xing = line_intersection_point(position, new_position, vertices, vertices_prev)
+
+        #print(xing)
         
         
+#        mask, points = line_intersection_point(position, new_position, vertices, vertices_prev)
+        #print(mask)
         
-        mask, points = line_intersection_point(position, new_position, vertices, vertices_prev)
-        print(mask)
-        
-        if np.any(mask):
-            v = np.argmax(mask)  # first intersection
-            point = points[v]
+        if len(xing):
+            #point = points[v]
             inters = True
-            print(point)
+            xing = xing[0]
+            side = int(side) 
+            x_positions.append(xing[0])
+            y_positions.append(xing[1])
+            print(side)
+            print(side, xing)
+            d = (new_position[0]+(new_position[1] - intercept[side])*ms[side])/(1+ms[side]*ms[side])
+
+            new_position[0] = 2*d - new_position[0]
+            new_position[1] = 2*d*ms[side] - new_position[1] + 2.*intercept[side]
+            # Initial length of brownian step
+            #m = m
 
         # Randomly recenter until inside box (single loop)
-            while inters:
+            #while inters:
 
-                print("start and first int",start_position,point)
-                c= np.random.uniform()/2
-                print("c and difference",c,start_position - point)
+            #    print("start and first int",start_position,point)
+            #    c= np.random.uniform()/2
+            #    print("c and difference",c,start_position - point)
 
-                new_position = point + c* (start_position - point)
-                print("new pos",new_position)
+            #    new_position = point + c* (start_position - point)
+            #    print("new pos",new_position)
 
-                inters2, points2 = line_intersection_point(position, new_position, vertices, vertices_prev)
-                print("int2 and point2",inters2,points2)
+            #    inters2, points2 = line_intersection_point(position, new_position, vertices, vertices_prev)
+            #    print("int2 and point2",inters2,points2)
 
-                if np.any(inters2):
-                    w = np.argmax(inters2)
-                    point = points2[w]
-                    print("point inside second if", point)
-                    inters = True
-                else: 
-                    inters= False
-            else:
-                inters= False
+            #    if np.any(inters2):
+            #        w = np.argmax(inters2)
+            #        point = points2[w]
+            #        print("point inside second if", point)
+            #        inters = True
+            #    else: 
+            #        inters= False
+            #else:
+            #    inters= False
         position = new_position
 
 
@@ -171,7 +183,7 @@ np.save("polygon_distances_"+ str(sides)+ "_sides",np.array(dists))
 #Plot the random walk in the triangle
 plt.figure(figsize=(18, 6))
 plt.subplot(1,3,1)
-plt.plot(x_positions, y_positions, '-')
+plt.plot(x_positions, y_positions, '-', marker = '+')
 plt.plot(x_positions[0], y_positions[0], 'go')  # Starting point
 plt.plot(x_positions[-1], y_positions[-1], 'ro')  # Ending point
 plt.title("Random Walk in a Polygon")
@@ -179,6 +191,7 @@ plt.xlabel("X Position")
 plt.ylabel("Y Position")
 for i in range(sides):
     plt.axline(vertices[i],slope=ms[i],c="red")
+    #plt.text(vertices[i][0], vertices[i][1] + 0.2, s = 12, text = f'{i}')
     #print(intercept[i],ms[i],vertices[i])
 plt.grid(True)
 
