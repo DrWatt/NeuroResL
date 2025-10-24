@@ -102,13 +102,14 @@ def sparse_ode_fn(t, y, x, params):
 
     return tf.reshape(tf.stack([du, dv], axis = 0),[-1])
 
-solver = NetworkRsv("RK4")
-N=1000
+solver = NetworkRsv("stochRK4")
+N=200
 t_init = tf.constant(0., dtype=tf.float64)
-t_max = tf.constant(40., dtype=tf.float64)
+t_max = tf.constant(100., dtype=tf.float64)
 step = tf.constant(0.001, dtype=tf.float64)
 expected_steps = 1 + int(t_max/step)
 
+T = 1.5e-2/1e-2
 a = 1.3
 fp = (-a, a**3/3 - a)
 # y_init = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype = tf.float64)
@@ -116,12 +117,14 @@ fp = (-a, a**3/3 - a)
 y_init = tf.random.uniform([2*N], dtype = tf.float64)
 #    x.write(i,tf.zeros([2*N],dtype=tf.float64))
 x = []
-for i in range(int(t_max/step)+1):
+for i in range(int(2*t_max/step)+1):
   x.append(tf.zeros([2*N],dtype=tf.float64))
   if i % 1000 == 0:
     x[i] = tf.random.normal([N*2], dtype=tf.float64)
   #x.append(tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64))
   
+tf.print(tf.shape(x)[0])
+tf.print(int(2*t_max/step)+1)
 # pulse_step = tf.random.uniform([],maxval=int(t_max/step)+1,dtype=tf.int32)
 # x[pulse_step] = tf.constant([fp[0] + 5 for i in range(N)] + [fp[1]] * N, dtype=tf.float64)
 # x[pulse_step+ 1] = tf.constant([fp[0] + np.random.normal() for i in range(N)] + [fp[1]] * N, dtype=tf.float64)
@@ -144,17 +147,16 @@ tf.print("Initial state ",y_init)
 A = ER_adjacency_sparse(N, 0.01, True)
 L = physical_laplacian_sparse(A)
 
-I = tf.constant(10., dtype = tf.float64)
+I = tf.constant(0., dtype = tf.float64)
 
 
 params = tf.tuple([0.01, a, 0.1, L, I]) 
-
 
 solver.fit(sparse_ode_fn,y_init,t_init,t_max,x, step, params)
 
 print("Starting integration")
 start_time= time.time()
-results = solver.run()
+results = solver.run(T = T)
 
 print("Integrated ", len(results[1]), " steps in ", time.time() - start_time, " s")
 

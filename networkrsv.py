@@ -22,7 +22,8 @@ class NetworkRsv:
   def __init__(self, integrator=None):
     supported_integrators =   {"DormPrince"      : self.runge_kutta_dormand_prince,
                                "AdaptDormPrince" : self.adaptive_runge_kutta_dormand_prince,
-                               "RK4"             : self.runge_kutta4}
+                               "RK4"             : self.runge_kutta4,
+                               "stochRK4"        : self.stoch_runge_kutta4}
     self.fn = None
     try:
       self.integrator = supported_integrators[integrator]
@@ -120,6 +121,64 @@ class NetworkRsv:
 
     t, y, x, idx = tf.while_loop(condition, body, [t, y, x, idx],parallel_iterations=100)
     return y.stack(),t.stack()
+
+  @tf.function
+  def stoch_runge_kutta4(self, f, t0, y0, t_end, h, x, T):
+
+    y = tf.TensorArray(dtype=tf.float64, size = 0, 
+                       dynamic_size=True, clear_after_read=False)
+    t = tf.TensorArray(dtype=tf.float64, size = 0, 
+                       dynamic_size=True, clear_after_read=False)
+    t = t.write(0,t0)
+    y = y.write(0,y0)
+    idx = tf.constant(0, dtype=tf.int32)
+    
+    lh = 0.5*h # Define half step
+
+    #if tf.shape(x)[0] != int(t_end/lh)+1:
+    #    raise ValueError 
+    
+    D = tf.cast(tf.math.sqrt(2*T*h), dtype = tf.float64)
+
+    noise_mask = tf.concat([tf.ones(tf.shape(y0)[0]//2, dtype = tf.bool),
+                           tf.zeros(tf.shape(y0)[0]//2, dtype = tf.bool)], 0)
+    tf.print(noise_mask)
+    stoch_step = False #tf.Tensor([False], dtype = tf.bool)
+
+    def condition(t,y,x, idx, D, stoch_step):
+      return tf.less(t.read(idx), t_end)
+
+    def body(t,y,x, idx, D, stoch_step):
+      y_temp = y.read(idx)
+      t_temp = t.read(idx)
+      x_temp = x[idx]
+
+      if stoch_step:
+          y_temp += tf.where(noise_mask, 
+                    tf.random.normal([tf.shape(noise_mask)[0]], 0., D, dtype=tf.float64), 
+                    tf.zeros(tf.shape(noise_mask)[0], dtype = tf.float64)) 
+
+      k1 = f(t_temp, y_temp, x_temp)
+      k2 = f(t_temp + .5*lh, y_temp + .5*lh * k1, x_temp)
+      k3 = f(t_temp + .5*lh, y_temp + .5*lh * k2, x_temp)
+      k4 = f(t_temp + lh   , y_temp + lh * k3    , x_temp)
+
+      y_temp = y_temp + lh * (k1 + 2. * k2 + 2 * k3 + k4) / 6.
+      idx += 1
+      y = y.write(idx, y_temp)
+
+      t = t.write(idx, t_temp + lh)
+
+      stoch_step = not stoch_step
+
+      tf.print("Time step", tf.cast(t_temp, tf.int32), " out of ", t_end, end='\r')
+      return t, y, x, idx, D, stoch_step
+    
+
+    t, y, x, idx, _, _= tf.while_loop(condition, body, [t, y, x, idx, D, stoch_step],
+                                 parallel_iterations=100)
+    return y.stack(),t.stack()
+
   @tf.function
   def adaptive_runge_kutta_dormand_prince(self, f, t0, y0, t_end, h, x, atol, rtol):
     y = tf.TensorArray(dtype=tf.float64, size = 0, dynamic_size=True, clear_after_read=False)
