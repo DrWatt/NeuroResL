@@ -14,7 +14,7 @@ def orientation(p, q, r):
         return 0
     return 1 if val > 0 else 2
 
-def line_intersection_point(p1, p2, q1, q2):
+def line_intersection_point(p1, p2, q1, q2, tol = 1e-9):
     """
     Check if line segments p1p2 and q1q2 intersect.
     Returns:
@@ -22,43 +22,32 @@ def line_intersection_point(p1, p2, q1, q2):
       - (True, None) if they overlap (collinear)
       - (False, None) if they do not intersect
     """
+    p1 = np.asarray(p1, dtype=float)
+    p2 = np.asarray(p2, dtype=float)
+    q1 = np.asarray(q1, dtype=float)
+    q2 = np.asarray(q2, dtype=float)
+
     x1, y1 = p1
     x2, y2 = p2
-    x3, y3 = q1
-    x4, y4 = q2
-
-    # Compute orientations
-    o1 = orientation(p1, p2, q1)
-    o2 = orientation(p1, p2, q2)
-    o3 = orientation(q1, q2, p1)
-    o4 = orientation(q1, q2, p2)
-    # General case: segments properly intersect
-    if o1 != o2 and o3 != o4:
-        # Solve the intersection point using line equations
-        denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
-        if abs(denom) < 1e-9:
-            return (False, None)  # Parallel or coincident
-
-        px = (
-            (x1 * y2 - y1 * x2) * (x3 - x4)
-            - (x1 - x2) * (x3 * y4 - y3 * x4)
-        ) / denom
-        py = (
-            (x1 * y2 - y1 * x2) * (y3 - y4)
-            - (y1 - y2) * (x3 * y4 - y3 * x4)
-        ) / denom
-        return (True, (px, py))
-    return (False, None)
+    x3, y3 = q1[:, 0], q1[:, 1]
+    x4, y4 = q2[:, 0], q2[:, 1]
 
 
+    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    parallel = np.abs(denom) < tol
 
+    t_num = (x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)
+    u_num = (x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)
+    t = t_num / denom
+    u = -u_num / denom
 
+    mask = (~parallel) & (t >= 0) & (t <= 1) & (u >= 0) & (u <= 1)
 
-
-
-
-
-
+    px = x1 + t * (x2 - x1)
+    py = y1 + t * (y2 - y1)
+    points = np.stack((px, py), axis=1)
+    
+    return mask, points
 
 def polygon_vertex_creator(n,r=1):
     vertices = []
@@ -98,59 +87,63 @@ def random_walk_triangle(num_steps,sides):
     distances_y_median = []
     vertices_prev = np.roll(vertices, 1, axis=0)
     rand_steps = np.random.normal(0, 1, size=(num_steps, 2))
+
+
+
+
+
     # Perform random walk
     for s in range(num_steps):
-        # Choose a random vertex as the target
-        #target_vertex = vertices[np.random.randint(len(vertices))]
-        # Move halfway towards the target
+
         new_position = position + rand_steps[s] #(position + target_vertex) / 2
-        # print(position[0]*ms[0]+intercept[0])
-        #inters = False
-        #v = 0
-        #for j in range(len(vertices)):
-        #    #print(new_position, position, "position", j)
-        #    #print(vertices[j],vertices[j-1], "vertices")
-        #    #print(line_intersection_point(position,new_position,vertices[j],vertices[j-1]))
-        #    inters, point = line_intersection_point(position,new_position,vertices[j],vertices[j-1])
-        #    if inters:
-        #        v = j
-        #        break
-        #    else:
-        #        inters = False
-        intersections = [
-                line_intersection_point(position, new_position, v1, v2)
-                for v1, v2 in zip(vertices, vertices_prev)
-                ]
-        inter_flags = np.array([i[0] for i in intersections])
-        points = [i[1] for i in intersections]
-        #while(inters):
-        #    centering = np.random.uniform()
-        #    new_position = np.array([point[0] + centering*(start_position[0] - point[0]),point[1] + centering*(start_position[1] - point[1])]) 
-        #    inters, point = line_intersection_point(position,new_position,vertices[v],vertices[v-1])
-        if np.any(inter_flags):
-            v = np.argmax(inter_flags)  # first intersection
-            inters = inter_flags[v]
+        
+        
+        
+        
+        mask, points = line_intersection_point(position, new_position, vertices, vertices_prev)
+        print(mask)
+        
+        if np.any(mask):
+            v = np.argmax(mask)  # first intersection
             point = points[v]
+            inters = True
+            print(point)
 
         # Randomly recenter until inside box (single loop)
             while inters:
-                new_position = point + np.random.uniform()* (start_position - point)
-                inters, point = line_intersection_point(position, new_position,
-                                                    vertices[v], vertices[v-1])
+
+                print("start and first int",start_position,point)
+                c= np.random.uniform()/2
+                print("c and difference",c,start_position - point)
+
+                new_position = point + c* (start_position - point)
+                print("new pos",new_position)
+
+                inters2, points2 = line_intersection_point(position, new_position, vertices, vertices_prev)
+                print("int2 and point2",inters2,points2)
+
+                if np.any(inters2):
+                    w = np.argmax(inters2)
+                    point = points2[w]
+                    print("point inside second if", point)
+                    inters = True
+                else: 
+                    inters= False
+            else:
+                inters= False
         position = new_position
-        # distances = [np.abs(position[1] - ms*position[0] - intercept)/math.sqrt(1+ms**2) for ms,intercept in zip(ms,intercept)]
+
+
+
+
+
+
         distances_x = np.array([position[0] - ((position[1]+intercept)/ms) for  ms,intercept in zip(ms,intercept)])
-        #distances_x = np.where(np.abs(distances_x) > 1.0, distances_x % 1, distances_x)
-        #distances_x = np.where(distances_x > 0,distances_x,-distances_x)
-        #print(distances)
         distances_x_max.append(max(distances_x))
         distances_x_min.append(min(distances_x))
         distances_x_median.append(np.median(distances_x))
 
         distances_y = np.array([position[1] - (position[0]*ms+intercept) for  ms,intercept in zip(ms,intercept)])
-        #print(distances)
-        #distances_y = np.where(np.abs(distances_y) > 1.0, distances_y % 1, distances_y)
-        #distances_y = np.where(distances_y > 0,distances_y,-distances_y)
         distances_y_max.append(max(distances_y))
         distances_y_min.append(min(distances_y))
         distances_y_median.append(np.median(distances_y))
@@ -162,8 +155,8 @@ def random_walk_triangle(num_steps,sides):
     return x_positions, y_positions, distances_x_min, distances_x_max, distances_x_median, distances_y_min, distances_y_max, distances_y_median
 
 # Number of steps in the random walk
-num_steps = 1000
-num_events = 100
+num_steps = 100
+num_events = 1
 sides = 5
 dists = []
 ms = []
